@@ -151,7 +151,7 @@ ISR(TIMER2_OVF_vect)
 
     if (GPIOR2 & 1 << 0)
     {
-        uint8_t b = a << 1 | (a & 1 << 4) >> 4;
+        uint8_t b = a << 1 | a >> 4 & 1 << 0;
 
         PORTD = b;
         PORTB = PORTB & 0b00111111 | b << 3 & 0b11000000;
@@ -195,7 +195,7 @@ ISR(TIMER2_OVF_vect)
 
     //if (GPIOR2 & 1 << 1)
     {
-        uint8_t b = ~(~k << 1 | (~k & 1 << 5) >> 4);
+        uint8_t b = k << 1 | k >> 4 & 1 << 1;
 
         PORTB = PORTB & 0b11111001 | b & 0b00000110;
         PORTC = PORTC & 0b11000111 | b & 0b00111000;
