@@ -41,7 +41,7 @@ int main(void)
     {
         // Enable the step-up converter
         PORTB |= _BV(PORTB0);
-        DDRB |= _BV(PORTB0);
+        DDRB |= _BV(DDB0);
 
         auto_off_timer = AUTO_OFF_TIME / 8;
 
@@ -88,20 +88,25 @@ int main(void)
     // Every other mode value puts the device to the power down mode
     else
     {
-        mode = 0;
-
+        // Ensure everything is off, though redundant after a reset
         cli();
         TIMSK2 = 0;
         TCCR2B = 0;
 
-        // Disable the step-up converter
-        DDRB = _BV(PORTB0);
+        DDRB &= ~_BV(DDB0);
         DDRC = 0;
         DDRD = 0;
 
-        PORTB = 0;
+        PORTB &= ~_BV(PORTB0);
         PORTC = 0;
         PORTD = 0;
+
+        // Disable the step-up converter
+        DDRB = _BV(DDB0);
+        PORTB &= ~_BV(PORTB0);
+
+        // Next external reset will start first operational mode
+        mode = 0;
 
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     }
