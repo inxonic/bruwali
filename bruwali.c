@@ -3,7 +3,8 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 
-#define AUTO_OFF_TIME 240
+#define AUTO_OFF_TIME 600
+
 #define BRIGHTNESS_STEP_A 40
 #define BRIGHTNESS_STEP_B 32
 
