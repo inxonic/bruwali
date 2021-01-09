@@ -166,11 +166,19 @@ ISR(TIMER2_OVF_vect)
     }
     else
     {
-        if (a % 2 == 0)
+        if (a >> 4 == 6 || (a & 1 << 0) == 0)
         {
-            if (a % 64 >= 32)
+            if (a >> 4 == 6)
             {
-                if (a % 4 < 2)
+                PORTD = 0;
+                PORTB &= ~_BV(PORTB6);
+                PORTB &= ~_BV(PORTB7);
+                a += 1 << 4;
+            }
+
+            if (a >> 7 == 0)
+            {
+                if ((a & 1 << 1) == 0)
                 {
 
                     PORTD |= 0b00011111;
@@ -182,20 +190,24 @@ ISR(TIMER2_OVF_vect)
             }
             else
             {
-                if (a % 4 < 2)
+                if ((a & 1 << 1) == 0)
                 {
 
                     PORTD |= 0b11100000;
-                    PORTB |= 0b11000000;
+                    PORTB |= _BV(PORTB6);
+                    PORTB |= _BV(PORTB7);
                 }
                 else
                 {
                     PORTD &= ~0b11100000;
-                    PORTB &= ~0b11000000;
+                    PORTB &= ~_BV(PORTB6);
+                    PORTB &= ~_BV(PORTB7);
                 }
             }
         }
-        GPIOR0 = a + 1;
+        a += 1 << 4;
+        a++;
+        GPIOR0 = a;
     }
 
     //if (GPIOR2 & 1 << 1)
