@@ -8,6 +8,9 @@
 #define BRIGHTNESS_STEP_A 40
 #define BRIGHTNESS_STEP_B 32
 
+#define FLASH_COUNT 3
+#define FLASH_REPEAT 43
+
 static volatile uint8_t mode __attribute__((section(".noinit")));
 static uint16_t auto_off_timer;
 
@@ -38,7 +41,7 @@ int main(void)
     }
 
     // Handle operational modes
-    if (mode <= 2)
+    if (mode <= 4)
     {
         // Enable the step-up converter
         PORTB |= _BV(PORTB0);
@@ -50,32 +53,36 @@ int main(void)
         WDTCSR |= _BV(WDCE) | _BV(WDE);
         WDTCSR = _BV(WDIE) | _BV(WDP3) | _BV(WDP0);
 
-        GPIOR2 = GPIOR2 & 0b11111000 | mode;
+        cli();
 
+        // Prescaler at 8 lets the timer overflow at 62.5 Hz
         TCCR2B = _BV(CS21);
 
-        if (mode & 1 << 0)
+        if (mode == 1 || mode == 3)
         {
             GPIOR0 = 0b01100011;
-            TIMSK2 = _BV(OCIE2A) | _BV(TOIE2);
+            GPIOR2 |= _BV(0);
+            TIMSK2 |= _BV(OCIE2A) | _BV(TOIE2);
         }
         else
         {
             GPIOR0 = 0;
-            TIMSK2 = _BV(TOIE2);
+            GPIOR2 &= ~_BV(0);
+            TIMSK2 |= _BV(TOIE2);
         }
 
-        //if (mode & 1<<1)
+        if (mode == 1 || mode == 2)
         {
             GPIOR1 = 0b11111001;
+            GPIOR2 |= _BV(1);
             TIMSK2 |= _BV(OCIE2B) | _BV(TOIE2);
         }
-        /*else
+        else
         {
-            GPIOR0 = 0;
-            TIMSK2 = _BV(TOIE2);
+            GPIOR1 = 0;
+            GPIOR2 &= ~_BV(1);
+            TIMSK2 |= _BV(TOIE2);
         }
-        */
 
         sei();
 
@@ -131,7 +138,7 @@ ISR(TIMER2_COMPA_vect)
 {
     uint8_t a = GPIOR0;
 
-    if (GPIOR2 & 1 << 0)
+    if (GPIOR2 & _BV(0))
     {
         PORTD = a;
         PORTB = PORTB & 0b00111111 | a << 3 & 0b11000000;
@@ -142,20 +149,15 @@ ISR(TIMER2_COMPB_vect)
 {
     uint8_t a = GPIOR1;
 
-    //if (GPIOR2 & 1 << 0)
-    {
-        PORTB = PORTB & 0b11111001 | a & 0b00000110;
-        PORTC = PORTC & 0b11000111 | a & 0b00111000;
-    }
+    PORTB = PORTB & 0b11111001 | a & 0b00000110;
+    PORTC = PORTC & 0b11000111 | a & 0b00111000;
 }
 
 ISR(TIMER2_OVF_vect)
 {
-    uint8_t m = GPIOR2;
     uint8_t a = GPIOR0;
-    uint8_t k = GPIOR1;
 
-    if (GPIOR2 & 1 << 0)
+    if (GPIOR2 & _BV(0))
     {
         uint8_t b = a << 1 | a >> 4 & 1 << 0;
 
@@ -211,14 +213,36 @@ ISR(TIMER2_OVF_vect)
         GPIOR0 = a;
     }
 
-    //if (GPIOR2 & 1 << 1)
-    {
-        uint8_t b = k << 1 | k >> 4 & 1 << 1;
+    uint8_t k = GPIOR1;
 
-        PORTB = PORTB & 0b11111001 | b & 0b00000110;
-        PORTC = PORTC & 0b11000111 | b & 0b00111000;
+    if (GPIOR2 & _BV(1))
+    {
+        uint8_t l = k << 1 | k >> 4 & 1 << 1;
+
+        PORTB = PORTB & 0b11111001 | l & 0b00000110;
+        PORTC = PORTC & 0b11000111 | l & 0b00111000;
 
         if ((OCR2B += BRIGHTNESS_STEP_B) < BRIGHTNESS_STEP_B)
-            GPIOR1 = b;
+            GPIOR1 = l;
+    }
+    else
+    {
+        if ((k & 1 << 0) == 0 && (k >> 2) < FLASH_COUNT)
+        {
+            if ((k >> 1 & 1 << 0) == 0)
+            {
+                PORTB &= ~0b00000110;
+                PORTC &= ~0b00111000;
+            }
+            else
+            {
+                PORTB |= 0b00000110;
+                PORTC |= 0b00111000;
+            }
+        }
+        k++;
+        if (k == FLASH_REPEAT)
+            k = 0;
+        GPIOR1 = k;
     }
 }
